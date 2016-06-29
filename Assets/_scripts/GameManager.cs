@@ -1,32 +1,181 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 using System.Collections;
 using System.Collections.Generic;
 
+public class Line
+{
+    public bool isDiagonal;
+    public Tile[] tiles = new Tile[3];
+
+    public Line(Tile a, Tile b, Tile c, bool isDiag)
+    {
+        tiles[0] = a;
+        tiles[1] = b;
+        tiles[2] = c;
+        isDiagonal = isDiag;
+    }
+
+    public bool IsComplete()
+    {
+        List<int> UnClaimed = GetUnClaimedTiles();
+        if (UnClaimed.Count > 0)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    public bool ContainsEnemy()
+    {
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if (tiles[i].IsPlayer)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool ContainsAlly()
+    {
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if (!tiles[i].IsPlayer)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool PlayerWon()
+    {
+        if (tiles[0].IsPlayer && tiles[1].IsPlayer && tiles[2].IsPlayer)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool IsStaleMate()
+    {
+        if (IsComplete())
+        {
+            if (tiles[0].IsPlayer && tiles[1].IsPlayer && tiles[2].IsPlayer)
+            {
+                return false;
+            }
+            else if (!tiles[0].IsPlayer && !tiles[1].IsPlayer && !tiles[2].IsPlayer)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public List<int> GetUnClaimedTiles()
+    {
+        List<int> UnClaimed = new List<int>();
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if (!tiles[i].IsClaimed)
+            {
+                UnClaimed.Add(i);
+            }
+        }
+        return UnClaimed;
+    }
+
+    public bool NeedsToBeBlocked()
+    {
+        int Count = 0;
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if (tiles[i].IsClaimed && tiles[i].IsPlayer)
+            {
+                Count++;
+            }
+        }
+
+        if (Count >= 2)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool ReadyToWin()
+    {
+        int Count = 0;
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if (tiles[i].IsClaimed && !tiles[i].IsPlayer)
+            {
+                Count++;
+            }
+        }
+
+        if (Count >= 2)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
 public class GameManager : MonoBehaviour
 {
-    public bool GameOver = false;
-    public Tile[] GamePieces = new Tile[9];
+    public Tile[] Tiles = new Tile[9];
+    public Line[] Lines = new Line[8];
+
     public bool IsPlayerTurn = true;
-    public List<int>[] WinLines = new List<int>[8];
-    public int[] ComputerOdds = new int[9];
     public int Winner = 0;
+    public bool GameOver = false;
 
     void Start()
     {
+        Lines[0] = new Line(Tiles[0], Tiles[1], Tiles[2], false);
+        Lines[1] = new Line(Tiles[3], Tiles[4], Tiles[5], false);
+        Lines[2] = new Line(Tiles[6], Tiles[7], Tiles[8], false);
+        Lines[3] = new Line(Tiles[0], Tiles[3], Tiles[6], false);
+        Lines[4] = new Line(Tiles[1], Tiles[4], Tiles[7], false);
+        Lines[5] = new Line(Tiles[2], Tiles[5], Tiles[8], false);
+        Lines[6] = new Line(Tiles[0], Tiles[4], Tiles[8], true);
+        Lines[7] = new Line(Tiles[2], Tiles[4], Tiles[6], true);
+
         Restart();
     }
 
     void processTurn()
     {
-        CheckWin();
-        if (GameOver)
-            EndGame();
-
-        CheckStalemate();
-        if (GameOver)
-            EndGame();
-
         ComputerMove();
+        Winner = CheckWin();
+        if (Winner != 0)
+        {
+            EndGame();
+        }
     }
 
     void EndGame()
@@ -39,7 +188,7 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("The Computer Won this Round!");
         }
-        else
+        else if (Winner == 3)
         {
             Debug.Log("This round ended in a Tie!");
         }
@@ -49,126 +198,106 @@ public class GameManager : MonoBehaviour
 
     void Restart()
     {
-        WinLines[0] = new List<int> { 0, 1, 2 };
-        WinLines[1] = new List<int> { 3, 4, 5 };
-        WinLines[2] = new List<int> { 6, 7, 8 };
-        WinLines[3] = new List<int> { 0, 3, 6 };
-        WinLines[4] = new List<int> { 1, 4, 7 };
-        WinLines[5] = new List<int> { 2, 5, 8 };
-        WinLines[6] = new List<int> { 0, 4, 8 };
-        WinLines[7] = new List<int> { 2, 4, 6 };
-
-        for (int i = 0; i < GamePieces.Length; i++)
+        Winner = 0;
+        for (int i = 0; i < Tiles.Length; i++)
         {
-            ComputerOdds[i] = 0;
-        }
-
-        for (int i = 0; i < GamePieces.Length; i++)
-        {
-            GamePieces[i].Reset();
+            Tiles[i].Reset();
+            Tiles[i].Clicked.AddListener(processTurn);
+            Tiles[i].UpdateColor();
         }
     }
 
     void ComputerMove()
     {
-        SetOdds();
-    }
-
-    /// <summary>
-    /// Get a list of all the lines that are only one move from closing.
-    /// If any of those lines have two computer squares WIN THE GAME.
-    /// If any of those lines have two player squares BLOCK THE PLAYER.
-    /// If none of the closable lines are computer controlled or player controlled ignore that line.
-    /// </summary>
-    void FindClosableLines()
-    {
-
-    }
-
-    /// <summary>
-    /// Find all the lines that have at least ONE square claimed.
-    /// If the line is started by the Computer, consider that line as a next move.
-    /// </summary>
-    void FindStartedLines()
-    {
-
-    }
-
-    /// <summary>
-    /// Once all the lines have been checked find the optimum square to claim.
-    /// This is definied by the open square that either:
-    /// A. Wins the game +10
-    /// B. Blocks the Player from winning the game +5
-    /// C. Gives the computer 2 squares in a line +2
-    /// D. Is an open square with the most open squares connected to it +1
-    /// </summary>
-    void FindOptimumSquare()
-    {
-
-    }
-
-    void SetOdds()
-    {
-        for (int i = 0; i < WinLines.Length; i++)
+        for (int i = 0; i < Lines.Length; i++)
         {
-            int odds = 0;
-            for (int x = 0; x < 3; x++)
+            if (Lines[i].ReadyToWin())
             {
-                if (GamePieces[WinLines[i][x]].IsClaimed)
+                List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                if (nextMove.Count > 0)
                 {
-                    if (GamePieces[WinLines[i][x]].IsPlayers)
+                    Lines[i].tiles[nextMove[0]].SetXorO(false);
+                    return;
+                }
+            }
+        }
+
+        for (int i = 0; i < Lines.Length; i++)
+        {
+            if (Lines[i].NeedsToBeBlocked())
+            {
+                List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                if (nextMove.Count > 0)
+                {
+                    Lines[i].tiles[nextMove[0]].SetXorO(false);
+                    return;
+                }
+            }
+        }
+
+        for (int i = 0; i < Lines.Length; i++)
+        {
+            if (!Lines[i].IsComplete())
+            {
+                if (!Lines[i].ContainsEnemy())
+                {
+                    List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                    if (nextMove.Count > 0)
                     {
-                        odds--;
-                    }
-                    else
-                    {
-                        odds++;
+                        Lines[i].tiles[nextMove[0]].SetXorO(false);
+                        return;
                     }
                 }
             }
-
-            ComputerOdds[i] = odds;
+        }
+        for (int i = 0; i < Tiles.Length; i++)
+        {
+            Tiles[i].UpdateColor();
         }
     }
 
     int CheckWin()
     {
-        for (int x = 0; x < WinLines.Length; x++)
+        if (CheckStalemate())
         {
-            int a = WinLines[x][0];
-            int b = WinLines[x][1];
-            int c = WinLines[x][2];
+            return 3;
+        }
 
-            if (GamePieces[a].IsClaimed && GamePieces[b].IsClaimed && GamePieces[c].IsClaimed)
+        for (int i = 0; i < Lines.Length; i++)
+        {
+            if (Lines[i].IsComplete())
             {
-                if (GamePieces[a].IsPlayers && GamePieces[b].IsPlayers && GamePieces[c].IsPlayers)
+                if (Lines[i].PlayerWon())
                 {
-                    GameOver = true;
                     return 1;
                 }
-                else if (!GamePieces[a].IsPlayers && !GamePieces[b].IsPlayers && !GamePieces[c].IsPlayers)
+                else
                 {
-                    GameOver = true;
                     return 2;
                 }
             }
         }
-        GameOver = false;
         return 0;
     }
 
     bool CheckStalemate()
     {
-        for (int i = 0; i < GamePieces.Length; i++)
+        int StaleMateCount = 0;
+        for (int i = 0; i < Lines.Length; i++)
         {
-            if (!GamePieces[i].IsClaimed)
+            if (Lines[i].IsStaleMate())
             {
-                GameOver = false;
-                return false;
+                StaleMateCount++;
             }
         }
-        GameOver = true;
-        return true;
+        if (StaleMateCount >= Lines.Length)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
 }

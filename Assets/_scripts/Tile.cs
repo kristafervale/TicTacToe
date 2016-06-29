@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using DG.Tweening;
@@ -13,17 +14,23 @@ public class Tile : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     public Color PlayerColor;
     public Color ComputerColor;
     public bool DeBugging = false;
+    public UnityEvent Clicked;
+    public bool IsClaimed = false;
+    public bool IsPlayer = false;
     #endregion
 
     #region Private Vars
-    public bool IsClaimed = false;
-    public bool IsPlayers = false;
     int m_xLoc = 0;
     int m_yLoc = 0;
     #endregion
 
     void Start()
     {
+        if(Clicked == null)
+        {
+            Clicked = new UnityEvent();
+        }
+
         IsClaimed = false;
         if (BackgroundImage != null)
         {
@@ -34,24 +41,13 @@ public class Tile : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     public void Reset()
     {
         IsClaimed = false;
-        IsPlayers = false;
+        IsPlayer = false;
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        IsClaimed = !IsClaimed;
-        if (BackgroundImage != null)
-        {
-            if (!IsClaimed)
-            {
-                BackgroundImage.color = BackgroundColor;
-            }
-            else
-            {
-                BackgroundImage.color = PlayerColor;
-            }
-        }
         SetXorO(true);
+        Clicked.Invoke();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -64,14 +60,7 @@ public class Tile : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
             }
             else
             {
-                if (IsPlayers)
-                {
-                    BackgroundImage.color = PlayerColor;
-                }
-                else
-                {
-                    BackgroundImage.color = ComputerColor;
-                }
+                UpdateColor();
             }
         }
     }
@@ -80,30 +69,37 @@ public class Tile : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
     {
         if (BackgroundImage != null)
         {
-            if (!IsClaimed)
+            UpdateColor();
+        }
+    }
+
+    public void UpdateColor()
+    {
+        if (!IsClaimed)
+        {
+            BackgroundImage.color = BackgroundColor;
+        }
+        else
+        {
+            if(IsPlayer)
             {
-                BackgroundImage.color = BackgroundColor;
+                BackgroundImage.color = PlayerColor;
             }
             else
             {
-                if (IsPlayers)
-                {
-                    BackgroundImage.color = PlayerColor;
-                }
-                else
-                {
-                    BackgroundImage.color = ComputerColor;
-                }
+                BackgroundImage.color = ComputerColor;
             }
         }
     }
 
-    void SetXorO(bool isX)
+    public void SetXorO(bool isX)
     {
-        IsPlayers = isX;
+        IsClaimed = true;
+        IsPlayer = isX;
         if(DeBugging)
         {
-            Debug.Log(string.Format("Tile is now {0}", IsPlayers ? "X" : "O"));
+            Debug.Log(string.Format("Tile is now {0}", IsPlayer ? "X" : "O"));
         }
+        UpdateColor();
     }
 }
