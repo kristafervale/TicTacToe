@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
-using UnityEngine.Events;
-using System.Collections;
+using UnityEngine.UI;
 using System.Collections.Generic;
 
 public class Line
@@ -56,6 +55,18 @@ public class Line
     public bool PlayerWon()
     {
         if (tiles[0].IsPlayer && tiles[1].IsPlayer && tiles[2].IsPlayer)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public bool ComputerWon()
+    {
+        if (!tiles[0].IsPlayer && !tiles[1].IsPlayer && !tiles[2].IsPlayer)
         {
             return true;
         }
@@ -147,6 +158,7 @@ public class Line
 
 public class GameManager : MonoBehaviour
 {
+    public Text StatusText;
     public Tile[] Tiles = new Tile[9];
     public Line[] Lines = new Line[8];
 
@@ -170,34 +182,54 @@ public class GameManager : MonoBehaviour
 
     void processTurn()
     {
-        ComputerMove();
-        Winner = CheckWin();
-        if (Winner != 0)
+        if (!GameOver)
         {
-            EndGame();
+            Winner = CheckWin();
+            if (Winner != 0)
+            {
+                EndGame();
+            }
+            else
+            {
+                ComputerMove();
+            }
         }
     }
 
     void EndGame()
     {
+        GameOver = true;
+        StatusText.raycastTarget = true;
         if (Winner == 1)
         {
-            Debug.Log("The Player Won this Round!");
+            StatusText.text = "The Player Won this Round!\nPress Space to Play Again!";
         }
         else if (Winner == 2)
         {
-            Debug.Log("The Computer Won this Round!");
+            StatusText.text = "The Computer Won this Round!\nPress Space to Play Again!";
         }
         else if (Winner == 3)
         {
-            Debug.Log("This round ended in a Tie!");
+            StatusText.text = "This round ended in a Tie!\nPress Space to Play Again!";
         }
+    }
 
-        Restart();
+    void Update()
+    {
+        if (Input.GetKeyUp(KeyCode.Space))
+        {
+            if (GameOver)
+            {
+                Restart();
+            }
+        }
     }
 
     void Restart()
     {
+        GameOver = false;
+        StatusText.text = "";
+        StatusText.raycastTarget = false;
         Winner = 0;
         for (int i = 0; i < Tiles.Length; i++)
         {
@@ -209,6 +241,9 @@ public class GameManager : MonoBehaviour
 
     void ComputerMove()
     {
+        bool hasMoved = false;
+
+        // Check for Win
         for (int i = 0; i < Lines.Length; i++)
         {
             if (Lines[i].ReadyToWin())
@@ -217,42 +252,130 @@ public class GameManager : MonoBehaviour
                 if (nextMove.Count > 0)
                 {
                     Lines[i].tiles[nextMove[0]].SetXorO(false);
-                    return;
+                    hasMoved = true;
+                    break;
                 }
             }
         }
 
-        for (int i = 0; i < Lines.Length; i++)
+        // Check for Tie
+        if (!hasMoved)
         {
-            if (Lines[i].NeedsToBeBlocked())
+            for (int i = 0; i < Lines.Length; i++)
             {
-                List<int> nextMove = Lines[i].GetUnClaimedTiles();
-                if (nextMove.Count > 0)
-                {
-                    Lines[i].tiles[nextMove[0]].SetXorO(false);
-                    return;
-                }
-            }
-        }
-
-        for (int i = 0; i < Lines.Length; i++)
-        {
-            if (!Lines[i].IsComplete())
-            {
-                if (!Lines[i].ContainsEnemy())
+                if (Lines[i].NeedsToBeBlocked())
                 {
                     List<int> nextMove = Lines[i].GetUnClaimedTiles();
                     if (nextMove.Count > 0)
                     {
                         Lines[i].tiles[nextMove[0]].SetXorO(false);
-                        return;
+                        hasMoved = true;
+                        break;
                     }
                 }
             }
         }
+
+        // Claim Middle if it's open
+        if (!hasMoved)
+        {
+            if (!Tiles[4].IsClaimed)
+            {
+                Tiles[4].SetXorO(false);
+                hasMoved = true;
+            }
+        }
+
+        // Open Line that has a friend in it.
+        if (!hasMoved)
+        {
+            for (int i = 0; i < Lines.Length; i++)
+            {
+                if (!Lines[i].IsComplete())
+                {
+                    if (!Lines[i].ContainsAlly())
+                    {
+                        List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                        if (nextMove.Count > 0)
+                        {
+                            Lines[i].tiles[nextMove[0]].SetXorO(false);
+                            hasMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Open Line that doesn't have an enemy in it
+        if (!hasMoved)
+        {
+            for (int i = 0; i < Lines.Length; i++)
+            {
+                if (!Lines[i].IsComplete())
+                {
+                    if (!Lines[i].ContainsEnemy())
+                    {
+                        List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                        if (nextMove.Count > 0)
+                        {
+                            Lines[i].tiles[nextMove[0]].SetXorO(false);
+                            hasMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Open Line that has an enemy in it
+        if (!hasMoved)
+        {
+            for (int i = 0; i < Lines.Length; i++)
+            {
+                if (!Lines[i].IsComplete())
+                {
+                    if (Lines[i].ContainsEnemy())
+                    {
+                        List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                        if (nextMove.Count > 0)
+                        {
+                            Lines[i].tiles[nextMove[0]].SetXorO(false);
+                            hasMoved = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Any open line regardless of who is in it.
+        if (!hasMoved)
+        {
+            for (int i = 0; i < Lines.Length; i++)
+            {
+                if (!Lines[i].IsComplete())
+                {
+                    List<int> nextMove = Lines[i].GetUnClaimedTiles();
+                    if (nextMove.Count > 0)
+                    {
+                        Lines[i].tiles[nextMove[0]].SetXorO(false);
+                        hasMoved = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         for (int i = 0; i < Tiles.Length; i++)
         {
             Tiles[i].UpdateColor();
+        }
+
+        Winner = CheckWin();
+        if (Winner != 0)
+        {
+            EndGame();
         }
     }
 
@@ -271,7 +394,7 @@ public class GameManager : MonoBehaviour
                 {
                     return 1;
                 }
-                else
+                else if (Lines[i].ComputerWon())
                 {
                     return 2;
                 }

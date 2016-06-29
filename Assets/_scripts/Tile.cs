@@ -40,14 +40,19 @@ public class Tile : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IP
 
     public void Reset()
     {
+        Clicked = null;
+        Clicked = new UnityEvent();
         IsClaimed = false;
         IsPlayer = false;
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        SetXorO(true);
-        Clicked.Invoke();
+        if(!IsClaimed)
+        {
+            SetXorO(true);
+            Clicked.Invoke();
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
