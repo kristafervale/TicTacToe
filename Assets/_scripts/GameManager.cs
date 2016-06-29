@@ -168,14 +168,14 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        Lines[0] = new Line(Tiles[0], Tiles[1], Tiles[2], false);
-        Lines[1] = new Line(Tiles[3], Tiles[4], Tiles[5], false);
-        Lines[2] = new Line(Tiles[6], Tiles[7], Tiles[8], false);
-        Lines[3] = new Line(Tiles[0], Tiles[3], Tiles[6], false);
-        Lines[4] = new Line(Tiles[1], Tiles[4], Tiles[7], false);
-        Lines[5] = new Line(Tiles[2], Tiles[5], Tiles[8], false);
-        Lines[6] = new Line(Tiles[0], Tiles[4], Tiles[8], true);
-        Lines[7] = new Line(Tiles[2], Tiles[4], Tiles[6], true);
+        Lines[0] = new Line(Tiles[0], Tiles[4], Tiles[8], true);
+        Lines[1] = new Line(Tiles[2], Tiles[4], Tiles[6], true);
+        Lines[2] = new Line(Tiles[0], Tiles[1], Tiles[2], false);
+        Lines[3] = new Line(Tiles[3], Tiles[4], Tiles[5], false);
+        Lines[4] = new Line(Tiles[6], Tiles[7], Tiles[8], false);
+        Lines[5] = new Line(Tiles[0], Tiles[3], Tiles[6], false);
+        Lines[6] = new Line(Tiles[1], Tiles[4], Tiles[7], false);
+        Lines[7] = new Line(Tiles[2], Tiles[5], Tiles[8], false);
 
         Restart();
     }
@@ -307,6 +307,55 @@ public class GameManager : MonoBehaviour
             }
         }
 
+        // Open Space that is adjacent to two enemy occupied spots
+        if (!hasMoved)
+        {
+            if(Tiles[1].IsPlayer && Tiles[3].IsPlayer)
+            {
+                if(!Tiles[0].IsClaimed)
+                {
+                    Tiles[0].SetXorO(false);
+                    hasMoved = true;
+                }
+            }
+        }
+
+        if (!hasMoved)
+        {
+            if (Tiles[1].IsPlayer && Tiles[5].IsPlayer)
+            {
+                if(!Tiles[2].IsClaimed)
+                {
+                    Tiles[2].SetXorO(false);
+                    hasMoved = true;
+                }
+            }
+        }
+
+        if (!hasMoved)
+        {
+            if (Tiles[5].IsPlayer && Tiles[7].IsPlayer)
+            {
+                if(!Tiles[8].IsClaimed)
+                {
+                    Tiles[8].SetXorO(false);
+                    hasMoved = true;
+                }
+            }
+        }
+
+        if (!hasMoved)
+        {
+            if (Tiles[3].IsPlayer && Tiles[7].IsPlayer)
+            {
+                if(!Tiles[6].IsClaimed)
+                {
+                    Tiles[6].SetXorO(false);
+                    hasMoved = true;
+                }
+            }
+        }
+
         // Open Line that doesn't have an enemy in it
         if (!hasMoved)
         {
@@ -315,27 +364,6 @@ public class GameManager : MonoBehaviour
                 if (!Lines[i].IsComplete())
                 {
                     if (!Lines[i].ContainsEnemy())
-                    {
-                        List<int> nextMove = Lines[i].GetUnClaimedTiles();
-                        if (nextMove.Count > 0)
-                        {
-                            Lines[i].tiles[nextMove[0]].SetXorO(false);
-                            hasMoved = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Open Line that has an enemy in it
-        if (!hasMoved)
-        {
-            for (int i = 0; i < Lines.Length; i++)
-            {
-                if (!Lines[i].IsComplete())
-                {
-                    if (Lines[i].ContainsEnemy())
                     {
                         List<int> nextMove = Lines[i].GetUnClaimedTiles();
                         if (nextMove.Count > 0)
